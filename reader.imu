@@ -1,0 +1,28 @@
+import serial, threading, time
+
+class IMUReader(threading.Thread):
+    def __init__(self, port="COM3", baud=115200):
+        super().__init__(daemon=True)
+        self.port = port
+        self.baud = baud
+        self.last_angle = 0.0
+        self._stop = False
+        self.ser = None
+
+    def stop(self):
+        self._stop = True
+        if self.ser and self.ser.is_open:
+            self.ser.close()
+
+    def run(self):
+        while not self._stop:
+            try:
+                if not self.ser or not self.ser.is_open:
+                    self.ser = serial.Serial(self.port, self.baud, timeout=1)
+                    print(f"[IMU] conectado em {self.port}")
+                line = self.ser.readline().decode(errors="ignore").strip()
+                if line.startswith("ANG:"):
+                    self.last_angle = float(line.split(":")[1])
+            except Exception as e:
+                print("[IMU] erro:", e)
+                time.sleep(1)
