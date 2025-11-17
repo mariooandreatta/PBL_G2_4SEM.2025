@@ -1,15 +1,40 @@
+#Métricas PBL:
+    #Frequência da IMU: 200 Hz
+
+    #Taxa de leitura no PC: 100–200 Hz
+
+    #FPS do jogo: 60 FPS
+
+    #Latência USB: ~3–5 ms
+
+    #Latência Bluetooth: 20–80 ms (instável)
+
+    #Aceleração máxima: 1200 px/s² (≈ 17 m/s²)
+
+    #Velocidade máxima: 50 km/h
+
+    #Fases por sessão: 10
+
+    #Duração por fase: 10 s
+
+    #Tempo total: ~2 minutos
+    
+    # Ângulo exibido: múltiplos de 2°
+    
+    #Ângulo real: precisão de 0.01°
+
+
 import math, time, threading, random
 import pygame
 import serial
 from serial.tools import list_ports
 
-# ============================ Utils ============================
 
 def clamp(x, a, b):
     return max(a, min(b, x))
 
 class LowPass:
-    def __init__(self, a=0.25):
+    def init(self, a=0.25):
         self.a = a
         self.y = 0.0
         self.init = False
@@ -20,19 +45,15 @@ class LowPass:
         else:
             self.y = self.a*x + (1-self.a)*self.y
         return self.y
+# IMU READER (aquivo)-possibilidade de usar blut
 
-# ============================ IMU via Bluetooth (SPP) ============================
-
-BT_NAME_HINT = "ESP32_WROOM_IMU"   # dica p/ auto-detecção no Windows
+BT_NAME_HINT = "ESP32_WROOM_IMU"   
 BAUD = 115200
 
 class IMUReader(threading.Thread):
-    """
-    Lê 'ANG:xx.xx' via porta COM (Bluetooth SPP) e mantém o último ângulo filtrado
-    em self.last_angle (graus). Opcionalmente envia 'z' para calibrar zero no firmware.
-    """
-    def __init__(self, port=None, a=0.25):
-        super().__init__(daemon=True)
+    
+    def init(self, port=None, a=0.25):
+        super().init(daemon=True)
         self.f = LowPass(a)
         self.last_angle = 0.0
         self.battery_v = None
@@ -105,7 +126,7 @@ class IMUReader(threading.Thread):
                 self.ser = None
                 time.sleep(0.8)
 
-# ============================ Mapeamento, unidades e conversões ============================
+# x
 
 def map_thr_rev(angle, cfg):
     dz = cfg["deadzone_deg"]
@@ -123,7 +144,7 @@ def map_thr_rev(angle, cfg):
 def kmh_from_pxps(pxps, px_per_m=70.0):
     return (pxps/px_per_m)*3.6
 
-# ====================================== Desenho ======================================
+# Desenho
 
 def draw_background(screen, W, H, far_ofs, mid_ofs):
     SKY1, SKY2 = (130,180,255), (210,235,255)
@@ -237,15 +258,25 @@ def draw_hud(screen, W, H, speed_px, dist_signed_px, cfg, angle, ang_rate, state
     real_txt = {"forward":"frente", "reverse":"trás", "neutral":"parado"}[state_from_speed]
     box.blit(fsm .render(f"Movimento: {real_txt}", True, (60,62,70)), (14, 88))
     screen.blit(box, (20,110))
+
+   
+    display_angle = round(angle / 2.0) * 2.0      
+    display_rate  = round(ang_rate / 2.0) * 2.0   
+
     font1 = pygame.font.SysFont(None, 48, bold=True)
     font2 = pygame.font.SysFont(None, 32)
-    col_ang = (0,180,95) if angle>2 else (200,200,200) if angle<-2 else (255,200,40)
-    t1 = font1.render(f"Ângulo: {angle:+5.1f}°", True, col_ang)
-    var_txt = "Var. + (plantar)" if ang_rate>1.0 else ("Var. − (dorsi)" if ang_rate<-1.0 else "Var. 0")
-    col_var = (0,180,95) if ang_rate>1.0 else (200,200,200) if ang_rate<-1.0 else (120,120,120)
-    t2 = font2.render(f"{var_txt}  {ang_rate:+5.1f}°/s", True, col_var)
+
+    
+    col_ang = (0,180,95) if angle > 2 else (200,200,200) if angle < -2 else (255,200,40)
+    t1 = font1.render(f"Ângulo: {display_angle:+3.0f}°", True, col_ang)
+
+    var_txt = "Var. + (plantar)" if ang_rate > 1.0 else ("Var. − (dorsi)" if ang_rate < -1.0 else "Var. 0")
+    col_var = (0,180,95) if ang_rate > 1.0 else (200,200,200) if ang_rate < -1.0 else (120,120,120)
+    t2 = font2.render(f"{var_txt}  {display_rate:+3.0f}°/s", True, col_var)
+
     screen.blit(t1, (W - t1.get_width() - 40, H - 120))
     screen.blit(t2, (W - t2.get_width() - 40, H - 82))
+
 
 def draw_report(screen, W, H, report, total_time, vavg_kmh, restart_btn_rect):
     overlay = pygame.Surface((W, H), pygame.SRCALPHA)
@@ -276,7 +307,7 @@ def draw_report(screen, W, H, report, total_time, vavg_kmh, restart_btn_rect):
     bt = pygame.font.SysFont(None, 36, bold=True).render("RECOMEÇAR  (R)", True, (255,255,255))
     screen.blit(bt, (x + btn_w//2 - bt.get_width()//2, y + btn_h//2 - bt.get_height()//2))
 
-# ====================================== Jogo ======================================
+# Jogo 
 
 def main():
     pygame.init()
@@ -293,7 +324,7 @@ def main():
         "a_max": 1200.0, "a_rev_max": 900.0,
         "px_per_m": 70.0, "drag": 180.0,
         "start_countdown": 8.0,
-        "target_front": +20.0, "target_back": -20.0,
+        "target_front": +10.0, "target_back": -25.0,
         "angle_enter_deg": 3.0, "angle_exit_deg": 2.0,
         "rep_time": 10.0, "rest_time": 2.0, "reps_each": 5,
         "settle_time": 3.0, "settle_tol_deg": 2.5, "settle_max": 6.0,
@@ -306,18 +337,18 @@ def main():
                 ("FRENTE", cfg["rep_time"]), ("TRANSIÇÃO", cfg["settle_max"])]
     total_reps = cfg["reps_each"]*2
 
-    # ------- IMU Bluetooth SPP -------
-    imu = IMUReader(port="COM3")   # <<< TROQUE AQUI para a sua COM Bluetooth de saída (SPP)
+    # IMU Bluetooth SPP 
+    imu = IMUReader(port="COM3")  
     imu.start()
 
-    # Calibração
+    # calibri 4s
     zero = 0.0
     calibrating = True
     cal_t0 = time.time()
     cal_buf = []
     CAL_TIME = 4.0
 
-    # Estados & cinematica
+    # mov
     started = False
     start_cd_left = 0.0
     session_done = False
@@ -325,7 +356,7 @@ def main():
     dist_signed_px = 0.0
     road_x = 0.0; far_ofs = 0.0; mid_ofs = 0.0
 
-    # Fases
+    # fases
     idx = 0
     phase_name, phase_left = seq[0]
     reps_done = 0
@@ -334,18 +365,18 @@ def main():
     prev_angle_used = 0.0
     angle_state = "neutral"
 
-    # Métricas
+    # mrtricas 
     rep_ang_ext = None
     rep_hit = False
     rep_t_to_target = None
     rep_t_elapsed = 0.0
     report_rows = []
 
-    # Transição (zero)
+    # Transição
     settle_ok_time = 0.0
     settle_total_time = 0.0
 
-    # Velocidade média absoluta
+    # Velocidade média
     acc_abs_dist_m = 0.0
     acc_time_s = 0.0
 
@@ -375,8 +406,7 @@ def main():
     running = True
     while running:
         dt = clock.tick(60) / 1000.0
-
-        # ---------- Eventos ----------
+        
         for e in pygame.event.get():
             if e.type == pygame.QUIT:
                 running = False
@@ -396,8 +426,8 @@ def main():
             elif e.type == pygame.MOUSEBUTTONDOWN and session_done:
                 if restart_btn_rect.collidepoint(e.pos):
                     reset_session()
+#calibracao 
 
-        # ---------- Leitura & Calibração ----------
         raw = imu.last_angle
         if calibrating:
             cal_buf.append(raw)
@@ -412,7 +442,7 @@ def main():
             ang_rate = (angle - prev_angle_used)/max(1e-3, dt)
         prev_angle_used = angle
 
-        # ---------- Estado por histerese ----------
+        # histerese
         if not ((not started) or start_cd_left>0 or calibrating or session_done):
             if angle_state == "neutral":
                 if angle >= cfg["angle_enter_deg"]:
@@ -428,7 +458,8 @@ def main():
         else:
             angle_state = "neutral"
 
-        # ---------- Banners & Fases ----------
+
+
         if calibrating:
             banner_text, banner_color = "CALIBRANDO — mantenha o pé parado (1.5 s)", (255,140,0,220)
         elif imu.battery_v is not None and imu.battery_v < 3.6:
@@ -485,7 +516,6 @@ def main():
                     else:
                         phase_name, phase_left = seq[idx]
 
-        # ---------- Métricas por repetição ----------
         if started and start_cd_left<=0 and not calibrating and not session_done:
             if phase_name in ("TRÁS","FRENTE"):
                 rep_t_elapsed += dt
@@ -497,9 +527,8 @@ def main():
                        (phase_name=="TRÁS"   and angle<=cfg["target_back"]):
                         rep_hit = True; rep_t_to_target = rep_t_elapsed
 
-        # ---------- Física ----------
         thr, rev = map_thr_rev(angle, cfg)
-        accel = cfg["a_max"]*thr - cfg["a_rev_max"]*rev - cfg["drag"]*(speed/cfg["v_max"])
+        accel = cfg["a_max"]thr - cfg["a_rev_max"]*rev - cfg["drag"](speed/cfg["v_max"])
         if (not started) or (start_cd_left>0) or calibrating or session_done or phase_name=="TRANSIÇÃO":
             accel = 0.0; speed = 0.0
         speed += accel*dt
@@ -513,7 +542,7 @@ def main():
             acc_abs_dist_m += abs(speed)*dt / cfg["px_per_m"]
             acc_time_s += dt
 
-        # ---------- Desenho ----------
+#desenho
         screen.fill((0,0,0))
         draw_background(screen, W, H, far_ofs, mid_ofs)
         draw_road(screen, W, H, road_x)
@@ -543,6 +572,8 @@ def main():
 
     imu.stop()
     pygame.quit()
+    
+# main com __ 
 
-if __name__ == "__main__":
+if name == "main":
     main()
