@@ -373,7 +373,7 @@ def ask_int(prompt, default):
 
 
 def main():
-    # ---------- CONFIGURAÇÃO AJUSTÁVEL PELO TERAPEUTA (TERMINAL) ----------
+    # CONFIGURAÇÃO AJUSTÁVEL PELO TERAPEUTA 
     print("\n=== Configuração da sessão (pressione ENTER para usar o padrão) ===")
     default_cfg = {
         "deadzone_deg": 2.0,
