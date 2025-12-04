@@ -425,7 +425,7 @@ def main():
                 ("FRENTE", cfg["rep_time"]), ("TRANSIÇÃO", cfg["settle_max"])]
     total_reps = cfg["reps_each"] * 2
 
-    imu = IMUReader(port="COM5")
+    imu = IMUReader(port="COM3")
     imu.start()
 
     zero = 0.0
